@@ -1,0 +1,8 @@
+beautifulsoup4==4.11.1
+crossref==0.1.2
+exchangelib==5.1.0
+Flask==2.2.2
+pywin32==304
+Requests==2.31.0
+setuptools==57.4.0
+tqdm==4.64.1
