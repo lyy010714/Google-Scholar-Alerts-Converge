@@ -80,7 +80,7 @@ port = config.get("port") or 5000
 imap_server = config.get("imap_server") or "imap.qq.com"
 address = config.get("address") or "scholaralerts-noreply@google.com"
 related_tag = config.get("related_tag") or " - 新的相关研究工作"
-new_articles_tag = config.get("new_articles_tag") or " - 新的文章"
+new_articles_tag = config.get("new_articles_tag") or " - 新文章"
 new_citations_tag = config.get("new_citations_tag") or "的文章新增了"
 new_results_tag = config.get("new_results_tag") or " - 新的结果"
 new_citations_num = config.get("new_citations_num") or 0
@@ -1057,16 +1057,35 @@ def export():
         "related",
         "subject",
     ]
+# 创建新的 columns 列表，去除 "IF", "IF5", 和 "sciUp"
+    new_columns = [
+        "title",
+        "author",
+        "journal",
+        "date",
+        "link",
+        "new_article",
+        "new_citation",
+        "related",
+        "subject",
+    ]
 
+# 获取需要保留的列的索引
+    indices_to_keep = [columns.index(col) for col in new_columns]
+
+    # 过滤数据，只保留需要的列
+    filtered_data = [
+        tuple(row[i] for i in indices_to_keep) for row in data
+    ]
+        
     # 保存到csv文件
     filename = f"Alerts_data.csv"
 
     with open(filename, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
-        writer.writerow(columns)
-        writer.writerows(data)
+        writer.writerow(new_columns)
+        writer.writerows(filtered_data)
 
-    return send_file(filename, as_attachment=True, download_name=filename)
 
 
 if __name__ == "__main__":
@@ -1084,7 +1103,8 @@ if __name__ == "__main__":
     if myaccount.init_success:
         t = threading.Thread(target=loop, daemon=True, name="LoopThread")
         t.start()
-        app.run(debug=True, use_reloader=False, port=port, host=host)
+        export()
+        app.run(debug=True, use_reloader=False, port=port, host='127.0.0.1')
     else:
         print("初始化失败：您的网络或账户存在问题，无法登录邮箱！")
         os._exit(0)

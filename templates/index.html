@@ -6,10 +6,12 @@
     <title>Google Scholar Alerts</title>
     <!-- 引入Bootstrap样式 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
-<!-- 引入jQuery和DataTables -->
+    <!-- 引入jQuery和DataTables -->
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='jquery.dataTables.min.css') }}">
     <script src="{{ url_for('static', filename='jquery-3.5.1.js') }}"></script>
     <script src="{{ url_for('static', filename='jquery.dataTables.min.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,27 +53,25 @@
             background-color: #0056b3;
         }
 
-        /* 新增的包装表格的样式 */
         .table-container {
             width: 96%; 
-            margin: 0 auto; /* 在页面上居中显示 */
-            text-align: center; /* 使表格内文本居中对齐 */
-            
+            margin: 0 auto;
+            text-align: center; 
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            table-layout: fixed; /* 固定列宽 */
+            table-layout: fixed;
         }
 
         th, td {
             padding: 8px;
             border-bottom: 1px solid #ddd;
             text-align: center;
-            overflow: hidden; /* 超出隐藏 */
-            white-space: normal; /* 多行显示 */
+            overflow: hidden;
+            white-space: normal;
         }
 
         th {
@@ -94,7 +94,6 @@
         .dataTables_filter {
             display: none;
         }
-
     </style>
 </head>
 <body>
@@ -104,59 +103,46 @@
         <br>
         
         <div class="button-container">
-            <!-- 按钮 -->
             <button id="exportButton" class="button">Export</button>
-            <button id="updateButton" class="button">Update IF</button>
             <button id="checkButton" class="button">Check Now</button>
-           
         </div>
 
         <div class="search-container">
-            <!-- 搜索框 -->
             <input type="text" id="searchBox" placeholder="Search...">
         </div>
     </div>
     
-    <!-- 新增的包装表格的div -->
     <div class="table-container">
         <table id="myTable" class="table table-striped table-bordered">
             <thead>
+                <!-- 第一行：标题 -->
                 <tr>
                     <th style="width: 40%;">Title</th>
-                    
                     <th style="width: 30%;">Journal</th>
                     <th style="width: 10%;">Date</th>
-                    <th style="width: 5%;">Link</th>
-                    <th style="width: 5%;">IF</th>
-                    <th style="width: 5%;">IF5</th>
-                    <th style="width: 11%;">Sci</th>
                     <th style="width: 10%;">New article</th>
-                    <th style="width: 10%;">New citation</th>
                     <th style="width: 10%;">Related with</th>
                     <th style="width: 10%;">Subject</th>
-                    <th style="width: 10%;">Update</th>
+                </tr>
+                <!-- 第二行：筛选控件 -->
+                <tr>
+                    <th></th>   <!-- Title -->
+                    <th></th>   <!-- Journal -->
+                    <th></th>   <!-- Date -->
+                    <th></th>
+                    <th></th>
+                    <th></th>   <!-- Subject -->
                 </tr>
             </thead>
             <tbody>
                 {% for row in data %}
                 <tr>
-                    <td>{{ row[0] }}</td>
-                    
+                    <td class="link"><a href="{{ row[4] }}" target="_blank">{{ row[0] }}</a></td>
                     <td class="journal">{{ row[2] }}</td>
                     <td>{{ row[3] }}</td>
-                    <td class="link"><a href="{{ row[4] }}" target="_blank">link</a></td>
-                    <td class="IF">{{ row[5] }}</td>
-                    <td class="IF5">{{ row[6] }}</td>
-                    <td class="Sci">{{ row[7] }}</td>
                     <td>{{ row[8] }}</td>
-                    <td>{{ row[9] }}</td>
                     <td>{{ row[10] }}</td>
-                    
                     <td>{{ row[11] }}</td>
-             
-                    <td>
-                        <button class="upone-button">Update</button>
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -164,143 +150,84 @@
     </div>
 
     <script>
-    $(document).ready( function () {
-
-        $('#myTable').DataTable({
+    $(document).ready(function () {
+        var table = $('#myTable').DataTable({
+            orderCellsTop: true,   // 关键：允许多行表头
+            fixedHeader: true,
             "dom": '<"top"f>rt<"bottom"lip><"clear">',
             "paging": true,
             "ordering": true,
             "searching": true,
-            "order": [[2, 'desc']]
-        });
+            "order": [[2, 'desc']],
+            initComplete: function () {
+                var api = this.api();
 
-        $('#exportButton').click(function() {
-    var exportButton = $(this);
-    exportButton.prop('disabled', true);
-    exportButton.text('Exporting');
+                // Journal (col 1) 和 Subject (col 6) 下拉框
+                api.columns([3]).every(function () {
+                    var column = this;
+                    var select = $('<select><option value="">All</option></select>')
+                        .appendTo($(api.table().header()).find('tr:eq(1) th').eq(column.index()).empty())
+                        .on('change', function () {
+                            var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                            column.search(val ? '^' + val + '$' : '', true, false).draw();
+                        });
 
-    $.ajax({
-        url: '/export',
-        method: 'GET',
-        xhrFields: {
-            responseType: 'blob'
-        },
-        processData: false,
-        success: function(data) {
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([data]));
-            link.download = "Alerts_data.csv";
-            link.click();
-
-            exportButton.text('Export');
-            exportButton.prop('disabled', false);
-        },
-        error: function() {
-            exportButton.text('Export Failed');
-            exportButton.prop('disabled', false);
-        }
-    });
-});
-$('#myTable').on('click', '.upone-button', function() {
-    var updatebutton = $(this);
-    updatebutton.prop('disabled', true);
-    updatebutton.text('Updating');
-    var row = $(this).closest('tr');
-    var journal = row.find('.journal').text();
-    var link = row.find('.link a').attr('href');
-
-    $.post('/updateone', { journal: journal, url: link })
-            .done( function(data) {
-        row.find('.journal').text(data.journal);
-        row.find('.IF').text(data.IF);
-        row.find('.IF5').text(data.IF5);
-        row.find('.Sci').text(data.sciUp);
-        updatebutton.text('Updated');
-        updatebutton.prop('disabled', false);
-    })
-    .fail(function() {
-        updatebutton.text('Update Failed');
-        updatebutton.prop('disabled', false);
-    });
-});
-    
-$('#updateButton').click(function() {
-            var updateButton = $(this);
-            updateButton.prop('disabled', true);
-            updateButton.text('Updating');
-
-            $.get('/update')
-                .done(function() {
-                    location.reload();
-                })
-                .fail(function() {
-                    updateButton.text('Update Failed');
-                    updateButton.prop('disabled', false);
+                    column.data().unique().sort().each(function (d) {
+                        if (d) {
+                            select.append('<option value="' + d + '">' + d + '</option>');
+                        }
+                    });
                 });
+
+                // Title (col 0), Date (col 2) 文本框
+                api.columns([0,1,2,4,5]).every(function () {
+                    var column = this;
+                    var input = $('<input type="text" placeholder="Search" style="width:100%"/>')
+                        .appendTo($(api.table().header()).find('tr:eq(1) th').eq(column.index()).empty())
+                        .on('keyup change', function () {
+                            if (column.search() !== this.value) {
+                                column.search(this.value).draw();
+                            }
+                        });
+                });
+            }
         });
-        
+
+        // 原有的 Export / Check 逻辑不变
+        $('#exportButton').click(function() {
+            var exportButton = $(this);
+            exportButton.prop('disabled', true).text('Exporting');
+            $.ajax({
+                url: '/export',
+                method: 'GET',
+                xhrFields: { responseType: 'blob' },
+                processData: false,
+                success: function(data) {
+                    var link = document.createElement('a');
+                    link.href = URL.createObjectURL(new Blob([data]));
+                    link.download = "Alerts_data.csv";
+                    link.click();
+                    exportButton.text('Export').prop('disabled', false);
+                },
+                error: function() {
+                    exportButton.text('Export Failed').prop('disabled', false);
+                }
+            });
+        });
+
         $('#checkButton').click(function() {
             var updateButton = $(this);
-            updateButton.prop('disabled', true);
-            updateButton.text('Checking');
-
+            updateButton.prop('disabled', true).text('Checking');
             $.get('/check')
-                .done(function() {
-                    location.reload();
-                })
-                .fail(function() {
-                    updateButton.text('Check Failed');
-                    updateButton.prop('disabled', false);
-                });
+                .done(function() { location.reload(); })
+                .fail(function() { updateButton.text('Check Failed').prop('disabled', false); });
         });
-        // 搜索功能
+
+        // 全局搜索框（保留）
         $('#searchBox').on('keyup', function () {
-    var searchString = $(this).val();
-    var table = $('#myTable').DataTable();
-
-    // 清除之前的搜索结果
-    table.search('').columns().search('').draw();
-
-    // 检查搜索字符串是否包含特殊的搜索语法
-    var specialSearch = searchString.split('&');
-    var searchParts = [];
-    for (var i = 0; i < specialSearch.length; i++) {
-        var searchPart = specialSearch[i].match(/(\w+)\s*==\s*(.+)/);
-        if (searchPart) {
-            searchParts.push({column: searchPart[1], value: searchPart[2]});
-        } else {
-            // 如果不包含 '=='，则将其与前一项搜索字符串合并作为搜索词
-            if (i > 0) {
-                searchParts[searchParts.length - 1].value += ("&"+specialSearch[i]);
-            } else {
-                searchParts.push({column: '', value: specialSearch[i]});
-            }
-        }
-    }
-
-    // 进行搜索
-    for (var i = 0; i < searchParts.length; i++) {
-        var columnName = searchParts[i].column;
-        var searchValue = searchParts[i].value;
-
-        // 检查列名是否存在
-        var columnIndex = -1;
-        table.columns().every(function(index) {
-            if (this.header().textContent === columnName) {
-                columnIndex = index;
-            }
+            var tableApi = $('#myTable').DataTable();
+            tableApi.search(this.value).draw();
         });
-
-        if (columnIndex !== -1) {
-            // 在指定的列中进行搜索
-            table.column(columnIndex).search(searchValue, true, false).draw();
-        } else {
-            // 列名不存在，进行全字段搜索
-            table.search(searchString, true, false).draw();
-        }
-    }
-});
-
     });
     </script>
 </body>

@@ -1,15 +1,15 @@
-ESkeys:
+ESkeys: 
 address: scholaralerts-noreply@google.com
 interval: 120
-username: 
-password: 
-imap_server: imap.qq.com
+username: lyy010714@gmail.com
+password: xbgqzasqfxrpjpzu
+imap_server: imap.gmail.com
 host: 127.0.0.1
 port: 5000
 
 
 related_tag:  "- 新的相关研究工作"
-new_articles_tag:  "- 新的文章"
+new_articles_tag:  "- 新文章"
 new_citations_tag: "的文章新增了"
 new_citations_num: 0
 new_results_tag:  "- 新的结果"
